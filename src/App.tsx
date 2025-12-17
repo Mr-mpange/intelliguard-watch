@@ -12,6 +12,7 @@ import Monitoring from "./pages/Monitoring";
 import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import ThreatInvestigation from "./pages/ThreatInvestigation";
 
 const queryClient = new QueryClient();
 
@@ -27,6 +28,7 @@ const App = () => (
             <Route path="/" element={<ProtectedRoute><Overview /></ProtectedRoute>} />
             <Route path="/analyze" element={<ProtectedRoute><Analyze /></ProtectedRoute>} />
             <Route path="/results" element={<ProtectedRoute><Results /></ProtectedRoute>} />
+            <Route path="/threat/:id" element={<ProtectedRoute><ThreatInvestigation /></ProtectedRoute>} />
             <Route path="/alerts" element={<ProtectedRoute><Alerts /></ProtectedRoute>} />
             <Route path="/monitoring" element={<ProtectedRoute><Monitoring /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />

@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  intelliguard-backend:
+    build: .
+    container_name: intelliguard-ml-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - API_KEY=${API_KEY:-dev-key-change-in-production}
+      - MODEL_PATH=/app/models
+      - CORS_ORIGINS=*
+    volumes:
+      - ./models:/app/models
+      - ./data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Optional: Redis for caching (uncomment if needed)
+  # redis:
+  #   image: redis:alpine
+  #   container_name: intelliguard-redis
+  #   ports:
+  #     - "6379:6379"
+  #   restart: unless-stopped
