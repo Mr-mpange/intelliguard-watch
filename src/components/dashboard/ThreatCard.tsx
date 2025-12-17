@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { ThreatPrediction } from '@/types/intelliguard';
 import { cn } from '@/lib/utils';
 import { Shield, AlertTriangle, Zap, Clock, Server } from 'lucide-react';
@@ -10,6 +11,7 @@ interface ThreatCardProps {
 }
 
 const ThreatCard = ({ prediction, index = 0 }: ThreatCardProps) => {
+  const navigate = useNavigate();
   const isNormal = prediction.attackType === 'Normal';
   
   const severityBadgeClass = {
@@ -25,8 +27,9 @@ const ThreatCard = ({ prediction, index = 0 }: ThreatCardProps) => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: index * 0.05 }}
+      onClick={() => navigate(`/threat/${prediction.id}`)}
       className={cn(
-        'glass-card p-5 transition-all duration-300 hover:scale-[1.02]',
+        'glass-card p-5 transition-all duration-300 hover:scale-[1.02] cursor-pointer',
         isNormal ? 'border-cyber-green/20' : 'border-cyber-red/20'
       )}
     >
