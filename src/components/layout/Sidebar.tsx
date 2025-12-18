@@ -11,10 +11,11 @@ import {
   Menu,
   X,
   LogOut,
-  User
+  User,
+  ShieldCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -24,6 +25,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { supabase } from '@/integrations/supabase/client';
 
 const navItems = [
   { path: '/', icon: LayoutDashboard, label: 'Overview' },
@@ -34,10 +36,27 @@ const navItems = [
   { path: '/settings', icon: Settings, label: 'Settings' },
 ];
 
+const adminNavItem = { path: '/admin', icon: ShieldCheck, label: 'Admin Dashboard' };
+
 const Sidebar = () => {
   const location = useLocation();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const { user, profile, signOut } = useAuth();
+
+  // Check if user is admin
+  useEffect(() => {
+    const checkAdminRole = async () => {
+      if (!user) return;
+      
+      const { data } = await supabase
+        .rpc('has_role', { _user_id: user.id, _role: 'admin' });
+      
+      setIsAdmin(!!data);
+    };
+    
+    checkAdminRole();
+  }, [user]);
 
   const getInitials = () => {
     if (profile?.full_name) {
@@ -45,6 +64,9 @@ const Sidebar = () => {
     }
     return user?.email?.slice(0, 2).toUpperCase() || 'U';
   };
+
+  // Build nav items with admin if applicable
+  const allNavItems = isAdmin ? [...navItems, adminNavItem] : navItems;
 
   return (
     <>
@@ -93,7 +115,7 @@ const Sidebar = () => {
         {/* Navigation */}
         <nav className="flex-1 p-4 overflow-y-auto scrollbar-cyber">
           <ul className="space-y-2">
-            {navItems.map((item) => {
+            {allNavItems.map((item) => {
               const isActive = location.pathname === item.path;
               return (
                 <li key={item.path}>
