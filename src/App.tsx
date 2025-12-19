@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, ProtectedRoute } from "@/hooks/useAuth";
 import Overview from "./pages/Overview";
 import Analyze from "./pages/Analyze";
@@ -34,6 +34,8 @@ const App = () => (
             <Route path="/monitoring" element={<ProtectedRoute><Monitoring /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
+            <Route path="/dashboard" element={<Navigate to="/" replace />} />
+            <Route path="/profile" element={<Navigate to="/settings" replace />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
