@@ -1,5 +1,6 @@
 import { ReactNode } from 'react';
 import Sidebar from './Sidebar';
+import Breadcrumb from './Breadcrumb';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -19,6 +20,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       
       <main className="flex-1 overflow-y-auto lg:ml-0">
         <div className="container mx-auto p-6 lg:p-8 pt-16 lg:pt-8">
+          <Breadcrumb />
           {children}
         </div>
       </main>
