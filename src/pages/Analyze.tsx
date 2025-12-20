@@ -1,17 +1,22 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, FileUp, Play, Loader2, CheckCircle2, Info } from 'lucide-react';
+import { Search, FileUp, Play, Loader2, CheckCircle2, Info, Globe, Upload } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import FileUpload from '@/components/dashboard/FileUpload';
 import { analyzeTraffic } from '@/services/mockData';
 import { AnalysisResult } from '@/types/intelliguard';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 const Analyze = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [analysisMode, setAnalysisMode] = useState<'file' | 'domain'>('file');
+  const [domainUrl, setDomainUrl] = useState('');
   const navigate = useNavigate();
 
   const handleFileSelect = (file: File) => {
@@ -20,18 +25,60 @@ const Analyze = () => {
   };
 
   const handleAnalyze = async () => {
-    if (!selectedFile) return;
+    if (analysisMode === 'file' && !selectedFile) return;
+    if (analysisMode === 'domain' && !domainUrl.trim()) {
+      toast.error('Please enter a domain or URL');
+      return;
+    }
 
     setIsAnalyzing(true);
     try {
-      const analysisResult = await analyzeTraffic(selectedFile);
-      setResult(analysisResult);
-      toast.success('Analysis complete!', {
-        description: `Processed ${analysisResult.summary.totalRecords} records`,
-      });
+      // For domain analysis, we create a mock result
+      // In production, this would call an actual domain scanning API
+      if (analysisMode === 'domain') {
+        // Simulate domain analysis
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        const hasThreat = Math.random() > 0.7;
+        const domainResult: AnalysisResult = {
+          summary: {
+            totalRecords: 1,
+            threats: hasThreat ? 1 : 0,
+            zeroDay: 0,
+            normal: hasThreat ? 0 : 1,
+            avgConfidence: 0.85,
+          },
+          predictions: hasThreat ? [{
+            id: '1',
+            attackType: 'Phishing',
+            severity: 'high',
+            confidence: 0.89,
+            sourceIP: domainUrl,
+            destinationIP: 'N/A',
+            timestamp: new Date().toISOString(),
+            port: 443,
+            protocol: 'HTTPS',
+            anomalyScore: 0.75,
+            isZeroDay: false,
+            details: 'Domain flagged for suspicious activity',
+          }] : [],
+          attackDistribution: hasThreat ? [{ name: 'Phishing', value: 1 }] : [],
+          severityDistribution: hasThreat ? [{ severity: 'high' as const, count: 1 }] : [],
+          timelineData: [{ time: new Date().toISOString(), threats: hasThreat ? 1 : 0, normal: hasThreat ? 0 : 1 }],
+        };
+        setResult(domainResult);
+        toast.success('Domain analysis complete!', {
+          description: `Scanned ${domainUrl}`,
+        });
+      } else {
+        const analysisResult = await analyzeTraffic(selectedFile!);
+        setResult(analysisResult);
+        toast.success('Analysis complete!', {
+          description: `Processed ${analysisResult.summary.totalRecords} records`,
+        });
+      }
     } catch (error) {
       toast.error('Analysis failed', {
-        description: 'Please try again or check your file format',
+        description: 'Please try again or check your input',
       });
     } finally {
       setIsAnalyzing(false);
@@ -41,6 +88,8 @@ const Analyze = () => {
   const viewResults = () => {
     navigate('/results', { state: { result } });
   };
+
+  const isReadyToAnalyze = analysisMode === 'file' ? !!selectedFile : !!domainUrl.trim();
 
   return (
     <DashboardLayout>
@@ -56,7 +105,7 @@ const Analyze = () => {
           </div>
           <h1 className="text-3xl font-bold mb-2">Analyze Traffic</h1>
           <p className="text-muted-foreground max-w-xl mx-auto">
-            Upload your network traffic logs for ML-powered threat detection and zero-day anomaly analysis
+            Upload your network traffic logs or scan a domain for ML-powered threat detection
           </p>
         </motion.div>
 
@@ -76,7 +125,7 @@ const Analyze = () => {
               <ul className="text-sm text-muted-foreground space-y-2">
                 <li className="flex items-center gap-2">
                   <span className="w-5 h-5 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center">1</span>
-                  Upload your traffic logs (CSV, JSON, or LOG format)
+                  Upload traffic logs or enter a domain/URL to scan
                 </li>
                 <li className="flex items-center gap-2">
                   <span className="w-5 h-5 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center">2</span>
@@ -95,28 +144,66 @@ const Analyze = () => {
           </div>
         </motion.div>
 
-        {/* Upload Section */}
+        {/* Analysis Mode Tabs */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
           className="glass-card p-8"
         >
-          <div className="flex items-center gap-2 mb-6">
-            <FileUp className="w-5 h-5 text-primary" />
-            <h2 className="text-xl font-semibold">Upload Traffic Logs</h2>
-          </div>
+          <Tabs value={analysisMode} onValueChange={(v) => { setAnalysisMode(v as 'file' | 'domain'); setResult(null); }}>
+            <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsTrigger value="file" className="flex items-center gap-2">
+                <Upload className="w-4 h-4" />
+                File Upload
+              </TabsTrigger>
+              <TabsTrigger value="domain" className="flex items-center gap-2">
+                <Globe className="w-4 h-4" />
+                Domain Scan
+              </TabsTrigger>
+            </TabsList>
 
-          <FileUpload
-            onFileSelect={handleFileSelect}
-            isLoading={isAnalyzing}
-            accept=".csv,.json,.log"
-            maxSize={10 * 1024 * 1024}
-          />
+            <TabsContent value="file">
+              <div className="flex items-center gap-2 mb-6">
+                <FileUp className="w-5 h-5 text-primary" />
+                <h2 className="text-xl font-semibold">Upload Traffic Logs</h2>
+              </div>
+
+              <FileUpload
+                onFileSelect={handleFileSelect}
+                isLoading={isAnalyzing}
+                accept=".csv,.json,.log"
+                maxSize={10 * 1024 * 1024}
+              />
+            </TabsContent>
+
+            <TabsContent value="domain">
+              <div className="flex items-center gap-2 mb-6">
+                <Globe className="w-5 h-5 text-primary" />
+                <h2 className="text-xl font-semibold">Scan Domain or URL</h2>
+              </div>
+
+              <div className="space-y-4">
+                <div className="relative">
+                  <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                  <Input
+                    value={domainUrl}
+                    onChange={(e) => setDomainUrl(e.target.value)}
+                    placeholder="Enter domain or URL (e.g., example.com or https://example.com)"
+                    className="pl-12 h-14 text-lg"
+                    disabled={isAnalyzing}
+                  />
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  We'll scan the domain for malware, phishing indicators, SSL issues, and reputation data
+                </p>
+              </div>
+            </TabsContent>
+          </Tabs>
 
           {/* Analyze Button */}
           <AnimatePresence>
-            {selectedFile && !isAnalyzing && !result && (
+            {isReadyToAnalyze && !isAnalyzing && !result && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -128,7 +215,7 @@ const Analyze = () => {
                   className="cyber-btn inline-flex items-center gap-2"
                 >
                   <Play className="w-5 h-5" />
-                  Start Analysis
+                  {analysisMode === 'file' ? 'Start Analysis' : 'Scan Domain'}
                 </button>
               </motion.div>
             )}
@@ -150,8 +237,12 @@ const Analyze = () => {
                     <Loader2 className="absolute inset-0 m-auto w-6 h-6 text-primary" />
                   </div>
                   <div>
-                    <p className="font-medium">Analyzing Traffic Patterns</p>
-                    <p className="text-sm text-muted-foreground">Running ML models...</p>
+                    <p className="font-medium">
+                      {analysisMode === 'file' ? 'Analyzing Traffic Patterns' : 'Scanning Domain'}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {analysisMode === 'file' ? 'Running ML models...' : 'Checking reputation & threats...'}
+                    </p>
                   </div>
                 </div>
               </motion.div>
@@ -174,7 +265,9 @@ const Analyze = () => {
                 <div>
                   <h3 className="text-xl font-semibold">Analysis Complete</h3>
                   <p className="text-sm text-muted-foreground">
-                    Processed {result.summary.totalRecords} records
+                    {analysisMode === 'file' 
+                      ? `Processed ${result.summary.totalRecords} records`
+                      : `Scanned ${domainUrl}`}
                   </p>
                 </div>
               </div>

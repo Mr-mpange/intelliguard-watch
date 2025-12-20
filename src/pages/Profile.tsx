@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { User, Camera, Save, Mail, Building, Bell, Shield, Lock, Eye, EyeOff } from 'lucide-react';
+import { User, Camera, Save, Mail, Building, Bell, Shield, Lock, Eye, EyeOff, ShieldCheck, ShieldOff } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,6 +17,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import ActivityLog from '@/components/profile/ActivityLog';
+import TwoFactorSetup from '@/components/profile/TwoFactorSetup';
 
 interface AlertPreferences {
   email: boolean;
@@ -43,6 +45,42 @@ const Profile = () => {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
+  
+  // 2FA state
+  const [show2FASetup, setShow2FASetup] = useState(false);
+  const [mfaEnabled, setMfaEnabled] = useState(false);
+  const [checkingMfa, setCheckingMfa] = useState(true);
+
+  // Check MFA status
+  useEffect(() => {
+    const checkMfaStatus = async () => {
+      try {
+        const { data, error } = await supabase.auth.mfa.listFactors();
+        if (!error && data) {
+          setMfaEnabled(data.totp.length > 0);
+        }
+      } catch (e) {
+        console.error('Error checking MFA status:', e);
+      } finally {
+        setCheckingMfa(false);
+      }
+    };
+    checkMfaStatus();
+  }, []);
+
+  const handleDisable2FA = async () => {
+    try {
+      const { data } = await supabase.auth.mfa.listFactors();
+      if (data?.totp?.[0]) {
+        const { error } = await supabase.auth.mfa.unenroll({ factorId: data.totp[0].id });
+        if (error) throw error;
+        setMfaEnabled(false);
+        toast.success('Two-factor authentication disabled');
+      }
+    } catch (error: any) {
+      toast.error('Failed to disable 2FA: ' + error.message);
+    }
+  };
 
   useEffect(() => {
     if (profile) {
@@ -356,22 +394,47 @@ const Profile = () => {
             </div>
 
             <div className="flex items-center justify-between py-2">
-              <div>
-                <p className="font-medium">Two-Factor Authentication</p>
-                <p className="text-sm text-muted-foreground">Add an extra layer of security</p>
+              <div className="flex items-center gap-3">
+                {mfaEnabled ? (
+                  <ShieldCheck className="w-5 h-5 text-cyber-green" />
+                ) : (
+                  <ShieldOff className="w-5 h-5 text-muted-foreground" />
+                )}
+                <div>
+                  <p className="font-medium">Two-Factor Authentication</p>
+                  <p className="text-sm text-muted-foreground">
+                    {checkingMfa ? 'Checking...' : mfaEnabled ? 'Enabled - Your account is protected' : 'Add an extra layer of security'}
+                  </p>
+                </div>
               </div>
-              <Button variant="outline" size="sm">
-                Enable 2FA
-              </Button>
+              {mfaEnabled ? (
+                <Button variant="outline" size="sm" onClick={handleDisable2FA} className="text-destructive hover:text-destructive">
+                  Disable 2FA
+                </Button>
+              ) : (
+                <Button variant="outline" size="sm" onClick={() => setShow2FASetup(true)} disabled={checkingMfa}>
+                  Enable 2FA
+                </Button>
+              )}
             </div>
           </div>
+        </motion.div>
+
+        {/* Activity Log */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="glass-card p-6"
+        >
+          <ActivityLog />
         </motion.div>
 
         {/* Save Button */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
+          transition={{ delay: 0.6 }}
           className="flex justify-end"
         >
           <Button
@@ -384,6 +447,13 @@ const Profile = () => {
           </Button>
         </motion.div>
       </div>
+
+      {/* 2FA Setup Dialog */}
+      <TwoFactorSetup 
+        open={show2FASetup} 
+        onOpenChange={setShow2FASetup}
+        onSuccess={() => setMfaEnabled(true)}
+      />
 
       {/* Password Change Dialog */}
       <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
