@@ -1,10 +1,23 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Settings as SettingsIcon, Bell, Shield, Key, Database, Save, RotateCcw } from 'lucide-react';
+import { Settings as SettingsIcon, Bell, Shield, Key, Database, Save, RotateCcw, Monitor, Smartphone, LogOut, Globe } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Settings as SettingsType } from '@/types/intelliguard';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 const Settings = () => {
   const [settings, setSettings] = useState<SettingsType>({
@@ -19,6 +32,68 @@ const Settings = () => {
 
   const [apiKey, setApiKey] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
+  const [showSignOutDialog, setShowSignOutDialog] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  
+  const { user, session, signOut } = useAuth();
+
+  // Session info
+  const sessionInfo = {
+    expiresAt: session?.expires_at ? new Date(session.expires_at * 1000) : null,
+    lastSignIn: user?.last_sign_in_at ? new Date(user.last_sign_in_at) : null,
+  };
+
+  const getDeviceIcon = () => {
+    const userAgent = navigator.userAgent.toLowerCase();
+    if (/mobile|android|iphone|ipad/.test(userAgent)) {
+      return <Smartphone className="w-5 h-5 text-primary" />;
+    }
+    return <Monitor className="w-5 h-5 text-primary" />;
+  };
+
+  const getDeviceName = () => {
+    const userAgent = navigator.userAgent;
+    if (/Windows/.test(userAgent)) return 'Windows PC';
+    if (/Mac/.test(userAgent)) return 'Mac';
+    if (/Linux/.test(userAgent)) return 'Linux';
+    if (/iPhone/.test(userAgent)) return 'iPhone';
+    if (/iPad/.test(userAgent)) return 'iPad';
+    if (/Android/.test(userAgent)) return 'Android';
+    return 'Unknown Device';
+  };
+
+  const getBrowserName = () => {
+    const userAgent = navigator.userAgent;
+    if (/Chrome/.test(userAgent) && !/Edg/.test(userAgent)) return 'Chrome';
+    if (/Safari/.test(userAgent) && !/Chrome/.test(userAgent)) return 'Safari';
+    if (/Firefox/.test(userAgent)) return 'Firefox';
+    if (/Edg/.test(userAgent)) return 'Edge';
+    if (/Opera|OPR/.test(userAgent)) return 'Opera';
+    return 'Unknown Browser';
+  };
+
+  const handleSignOutAllDevices = async () => {
+    setSigningOut(true);
+    try {
+      const { error } = await supabase.auth.signOut({ scope: 'global' });
+      if (error) throw error;
+      toast.success('Signed out from all devices');
+    } catch (error: any) {
+      toast.error('Failed to sign out: ' + error.message);
+    } finally {
+      setSigningOut(false);
+      setShowSignOutDialog(false);
+    }
+  };
+
+  const handleSignOutCurrentSession = async () => {
+    try {
+      await signOut();
+      toast.success('Signed out successfully');
+    } catch (error: any) {
+      toast.error('Failed to sign out: ' + error.message);
+    }
+  };
 
   const handleSave = () => {
     toast.success('Settings saved successfully');
@@ -287,11 +362,87 @@ const Settings = () => {
           </div>
         </motion.div>
 
+        {/* Session Management */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="glass-card p-6"
+        >
+          <div className="flex items-center gap-2 mb-6">
+            <Globe className="w-5 h-5 text-primary" />
+            <h2 className="text-xl font-semibold">Active Sessions</h2>
+          </div>
+
+          <div className="space-y-4">
+            {/* Current Session */}
+            <div className="p-4 rounded-lg bg-muted/50 border border-primary/20">
+              <div className="flex items-start justify-between">
+                <div className="flex items-start gap-4">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    {getDeviceIcon()}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium">{getDeviceName()}</p>
+                      <span className="px-2 py-0.5 text-xs rounded-full bg-cyber-green/20 text-cyber-green">
+                        Current
+                      </span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{getBrowserName()}</p>
+                    <div className="mt-2 text-xs text-muted-foreground space-y-1">
+                      {sessionInfo.lastSignIn && (
+                        <p>Last sign in: {sessionInfo.lastSignIn.toLocaleString()}</p>
+                      )}
+                      {sessionInfo.expiresAt && (
+                        <p>Session expires: {sessionInfo.expiresAt.toLocaleString()}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleSignOutCurrentSession}
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Sign Out
+                </Button>
+              </div>
+            </div>
+
+            {/* Security Info */}
+            <div className="p-4 rounded-lg bg-muted/30 border border-border">
+              <p className="text-sm text-muted-foreground">
+                For security reasons, you can sign out from all devices at once. This will require you to sign in again on all your devices.
+              </p>
+            </div>
+
+            {/* Sign Out All Devices */}
+            <div className="flex items-center justify-between pt-2">
+              <div>
+                <p className="font-medium text-destructive">Sign Out All Devices</p>
+                <p className="text-sm text-muted-foreground">
+                  End all active sessions including this one
+                </p>
+              </div>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setShowSignOutDialog(true)}
+              >
+                Sign Out All
+              </Button>
+            </div>
+          </div>
+        </motion.div>
+
         {/* Action Buttons */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
+          transition={{ delay: 0.6 }}
           className="flex items-center justify-end gap-4"
         >
           <button
@@ -310,6 +461,28 @@ const Settings = () => {
           </button>
         </motion.div>
       </div>
+
+      {/* Sign Out All Devices Dialog */}
+      <AlertDialog open={showSignOutDialog} onOpenChange={setShowSignOutDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sign out from all devices?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will end all active sessions, including this one. You'll need to sign in again on all your devices.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleSignOutAllDevices}
+              disabled={signingOut}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {signingOut ? 'Signing out...' : 'Sign Out All'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 };
