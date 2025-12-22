@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
+import { auditLog } from '@/services/auditLog';
 
 interface AlertPreferences {
   email: boolean;
@@ -98,6 +99,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       email,
       password,
     });
+    if (!error) {
+      auditLog.login();
+    }
     return { error };
   };
 
@@ -114,6 +118,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         },
       },
     });
+    if (!error) {
+      auditLog.signup(email);
+    }
     return { error };
   };
 
@@ -124,10 +131,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         redirectTo: `${window.location.origin}/`,
       },
     });
+    if (!error) {
+      auditLog.loginWithGoogle();
+    }
     return { error: error as Error | null };
   };
 
   const signOut = async () => {
+    await auditLog.logout();
     await supabase.auth.signOut();
     setProfile(null);
   };

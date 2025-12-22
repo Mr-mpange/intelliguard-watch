@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/dialog';
 import ActivityLog from '@/components/profile/ActivityLog';
 import TwoFactorSetup from '@/components/profile/TwoFactorSetup';
+import { auditLog } from '@/services/auditLog';
 
 interface AlertPreferences {
   email: boolean;
@@ -75,6 +76,7 @@ const Profile = () => {
         const { error } = await supabase.auth.mfa.unenroll({ factorId: data.totp[0].id });
         if (error) throw error;
         setMfaEnabled(false);
+        await auditLog.disable2FA();
         toast.success('Two-factor authentication disabled');
       }
     } catch (error: any) {
@@ -117,6 +119,8 @@ const Profile = () => {
         .eq('user_id', user.id);
 
       if (error) throw error;
+      
+      await auditLog.profileUpdate({ full_name: fullName, department, avatar_url: avatarUrl });
       toast.success('Profile updated successfully');
     } catch (error: any) {
       toast.error('Failed to update profile: ' + error.message);
@@ -142,6 +146,7 @@ const Profile = () => {
 
       const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
       setAvatarUrl(data.publicUrl);
+      await auditLog.avatarUpload();
       toast.success('Avatar uploaded successfully');
     } catch (error: any) {
       toast.error('Failed to upload avatar: ' + error.message);
@@ -174,6 +179,7 @@ const Profile = () => {
 
       if (error) throw error;
 
+      await auditLog.passwordChange();
       toast.success('Password updated successfully');
       setShowPasswordDialog(false);
       setNewPassword('');
