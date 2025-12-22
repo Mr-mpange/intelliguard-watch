@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { auditLog } from '@/services/auditLog';
 
 interface TwoFactorSetupProps {
   open: boolean;
@@ -72,6 +73,7 @@ const TwoFactorSetup = ({ open, onOpenChange, onSuccess }: TwoFactorSetupProps) 
 
       if (verifyError) throw verifyError;
 
+      await auditLog.enable2FA();
       toast.success('Two-factor authentication enabled!');
       onSuccess?.();
       handleClose();

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, FileUp, Play, Loader2, CheckCircle2, Info, Globe, Upload } from 'lucide-react';
+import { Search, FileUp, Play, Loader2, CheckCircle2, Info, Globe, Upload, AlertTriangle, ShieldCheck, ExternalLink } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import FileUpload from '@/components/dashboard/FileUpload';
 import { analyzeTraffic } from '@/services/mockData';
@@ -10,6 +10,8 @@ import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
+import { auditLog } from '@/services/auditLog';
 
 const Analyze = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -17,6 +19,17 @@ const Analyze = () => {
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [analysisMode, setAnalysisMode] = useState<'file' | 'domain'>('file');
   const [domainUrl, setDomainUrl] = useState('');
+  const [domainScanResult, setDomainScanResult] = useState<{
+    isMalicious: boolean;
+    positives: number;
+    total: number;
+    categories: Record<string, string>;
+    reputation: number;
+    lastAnalysisDate: string | null;
+    engines: Array<{ name: string; result: string; category: string }>;
+    sslCertificate?: { issuer: string; validFrom: string; validTo: string };
+    message?: string;
+  } | null>(null);
   const navigate = useNavigate();
 
   const handleFileSelect = (file: File) => {
@@ -32,53 +45,68 @@ const Analyze = () => {
     }
 
     setIsAnalyzing(true);
+    setDomainScanResult(null);
+    
     try {
-      // For domain analysis, we create a mock result
-      // In production, this would call an actual domain scanning API
       if (analysisMode === 'domain') {
-        // Simulate domain analysis
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        const hasThreat = Math.random() > 0.7;
+        // Call the VirusTotal edge function
+        const { data, error } = await supabase.functions.invoke('scan-domain', {
+          body: { domain: domainUrl },
+        });
+
+        if (error) throw error;
+
+        setDomainScanResult(data);
+        await auditLog.domainScan(domainUrl, data.isMalicious);
+        
+        // Create analysis result for navigation
         const domainResult: AnalysisResult = {
           summary: {
             totalRecords: 1,
-            threats: hasThreat ? 1 : 0,
+            threats: data.isMalicious ? 1 : 0,
             zeroDay: 0,
-            normal: hasThreat ? 0 : 1,
-            avgConfidence: 0.85,
+            normal: data.isMalicious ? 0 : 1,
+            avgConfidence: data.positives > 0 ? data.positives / data.total : 0,
           },
-          predictions: hasThreat ? [{
+          predictions: data.isMalicious ? [{
             id: '1',
-            attackType: 'Phishing',
-            severity: 'high',
-            confidence: 0.89,
+            attackType: 'Malware',
+            severity: data.positives > 5 ? 'critical' : data.positives > 2 ? 'high' : 'medium',
+            confidence: data.positives / (data.total || 1),
             sourceIP: domainUrl,
             destinationIP: 'N/A',
             timestamp: new Date().toISOString(),
             port: 443,
             protocol: 'HTTPS',
-            anomalyScore: 0.75,
+            anomalyScore: data.positives / (data.total || 1),
             isZeroDay: false,
-            details: 'Domain flagged for suspicious activity',
+            details: `Domain flagged by ${data.positives} security vendors`,
           }] : [],
-          attackDistribution: hasThreat ? [{ name: 'Phishing', value: 1 }] : [],
-          severityDistribution: hasThreat ? [{ severity: 'high' as const, count: 1 }] : [],
-          timelineData: [{ time: new Date().toISOString(), threats: hasThreat ? 1 : 0, normal: hasThreat ? 0 : 1 }],
+          attackDistribution: data.isMalicious ? [{ name: 'Malware', value: 1 }] : [],
+          severityDistribution: data.isMalicious 
+            ? [{ severity: data.positives > 5 ? 'critical' as const : 'high' as const, count: 1 }] 
+            : [],
+          timelineData: [{ time: new Date().toISOString(), threats: data.isMalicious ? 1 : 0, normal: data.isMalicious ? 0 : 1 }],
         };
         setResult(domainResult);
-        toast.success('Domain analysis complete!', {
-          description: `Scanned ${domainUrl}`,
+        
+        toast.success('Domain scan complete!', {
+          description: data.isMalicious 
+            ? `${data.positives} security vendors flagged this domain` 
+            : 'No threats detected',
         });
       } else {
         const analysisResult = await analyzeTraffic(selectedFile!);
         setResult(analysisResult);
+        await auditLog.fileAnalysis(selectedFile!.name, analysisResult.summary.threats);
         toast.success('Analysis complete!', {
           description: `Processed ${analysisResult.summary.totalRecords} records`,
         });
       }
-    } catch (error) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Please try again or check your input';
       toast.error('Analysis failed', {
-        description: 'Please try again or check your input',
+        description: message,
       });
     } finally {
       setIsAnalyzing(false);
@@ -250,9 +278,129 @@ const Analyze = () => {
           </AnimatePresence>
         </motion.div>
 
-        {/* Results Summary */}
+        {/* Domain Scan Results - Detailed */}
         <AnimatePresence>
-          {result && (
+          {domainScanResult && analysisMode === 'domain' && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={`glass-card p-8 ${domainScanResult.isMalicious ? 'border-cyber-red/30' : 'border-cyber-green/30'}`}
+            >
+              <div className="flex items-center gap-3 mb-6">
+                <div className={`p-2 rounded-lg ${domainScanResult.isMalicious ? 'bg-cyber-red/10' : 'bg-cyber-green/10'}`}>
+                  {domainScanResult.isMalicious ? (
+                    <AlertTriangle className="w-6 h-6 text-cyber-red" />
+                  ) : (
+                    <ShieldCheck className="w-6 h-6 text-cyber-green" />
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold">
+                    {domainScanResult.isMalicious ? 'Threats Detected' : 'Domain is Clean'}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Scanned: {domainUrl}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div className="text-center p-4 rounded-lg bg-muted/30">
+                  <p className="text-3xl font-bold font-mono">{domainScanResult.total}</p>
+                  <p className="text-sm text-muted-foreground">Engines Scanned</p>
+                </div>
+                <div className={`text-center p-4 rounded-lg ${domainScanResult.positives > 0 ? 'bg-cyber-red/10 border border-cyber-red/20' : 'bg-cyber-green/10 border border-cyber-green/20'}`}>
+                  <p className={`text-3xl font-bold font-mono ${domainScanResult.positives > 0 ? 'text-cyber-red' : 'text-cyber-green'}`}>
+                    {domainScanResult.positives}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Detections</p>
+                </div>
+                <div className="text-center p-4 rounded-lg bg-muted/30">
+                  <p className="text-3xl font-bold font-mono">{domainScanResult.reputation}</p>
+                  <p className="text-sm text-muted-foreground">Reputation Score</p>
+                </div>
+                <div className="text-center p-4 rounded-lg bg-muted/30">
+                  <p className="text-sm font-medium">
+                    {domainScanResult.lastAnalysisDate 
+                      ? new Date(domainScanResult.lastAnalysisDate).toLocaleDateString() 
+                      : 'N/A'}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Last Scanned</p>
+                </div>
+              </div>
+
+              {/* Categories */}
+              {Object.keys(domainScanResult.categories).length > 0 && (
+                <div className="mb-6">
+                  <h4 className="font-medium mb-2">Categories</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(domainScanResult.categories).map(([engine, category]) => (
+                      <span key={engine} className="px-2 py-1 text-xs rounded-full bg-primary/10 text-primary">
+                        {category}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Flagged Engines */}
+              {domainScanResult.engines.length > 0 && (
+                <div className="mb-6">
+                  <h4 className="font-medium mb-2 text-cyber-red">Flagged by Security Vendors</h4>
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {domainScanResult.engines.map((engine, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-2 rounded bg-cyber-red/5 border border-cyber-red/10">
+                        <span className="font-medium">{engine.name}</span>
+                        <span className="text-sm text-cyber-red">{engine.result}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* SSL Certificate */}
+              {domainScanResult.sslCertificate && (
+                <div className="mb-6">
+                  <h4 className="font-medium mb-2">SSL Certificate</h4>
+                  <div className="grid grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">Issuer</p>
+                      <p className="font-medium">{domainScanResult.sslCertificate.issuer}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Valid From</p>
+                      <p className="font-medium">{domainScanResult.sslCertificate.validFrom}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Valid To</p>
+                      <p className="font-medium">{domainScanResult.sslCertificate.validTo}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {domainScanResult.message && (
+                <p className="text-sm text-muted-foreground italic mb-4">{domainScanResult.message}</p>
+              )}
+
+              <div className="flex items-center justify-center gap-4">
+                <a
+                  href={`https://www.virustotal.com/gui/domain/${domainUrl.replace(/^https?:\/\//, '').split('/')[0]}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  View on VirusTotal
+                </a>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* File Analysis Results Summary */}
+        <AnimatePresence>
+          {result && analysisMode === 'file' && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -265,9 +413,7 @@ const Analyze = () => {
                 <div>
                   <h3 className="text-xl font-semibold">Analysis Complete</h3>
                   <p className="text-sm text-muted-foreground">
-                    {analysisMode === 'file' 
-                      ? `Processed ${result.summary.totalRecords} records`
-                      : `Scanned ${domainUrl}`}
+                    Processed {result.summary.totalRecords} records
                   </p>
                 </div>
               </div>
