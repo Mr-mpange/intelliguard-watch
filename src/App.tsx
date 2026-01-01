@@ -13,6 +13,7 @@ import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import ThreatInvestigation from "./pages/ThreatInvestigation";
+import ThreatDashboard from "./pages/ThreatDashboard";
 import Admin from "./pages/Admin";
 import Profile from "./pages/Profile";
 
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            <Route path="/threat-intelligence" element={<ProtectedRoute><ThreatDashboard /></ProtectedRoute>} />
             <Route path="/dashboard" element={<Navigate to="/" replace />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

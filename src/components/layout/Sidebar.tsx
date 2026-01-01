@@ -12,7 +12,8 @@ import {
   X,
   LogOut,
   User,
-  ShieldCheck
+  ShieldCheck,
+  TrendingUp
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
@@ -31,6 +32,7 @@ const navItems = [
   { path: '/', icon: LayoutDashboard, label: 'Overview' },
   { path: '/analyze', icon: Search, label: 'Analyze Traffic' },
   { path: '/results', icon: BarChart3, label: 'Results' },
+  { path: '/threat-intelligence', icon: TrendingUp, label: 'Threat Intel' },
   { path: '/alerts', icon: Bell, label: 'Alerts' },
   { path: '/monitoring', icon: Globe, label: 'Domain Monitor' },
   { path: '/settings', icon: Settings, label: 'Settings' },
