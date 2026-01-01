@@ -2,3 +2,6 @@ project_id = "zfxcffjbnwrbwypqnmvp"
 
 [functions.scan-domain]
 verify_jwt = false
+
+[functions.send-threat-alert]
+verify_jwt = false
