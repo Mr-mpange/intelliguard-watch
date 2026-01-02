@@ -53,6 +53,54 @@ export type Database = {
         }
         Relationships: []
       }
+      domain_scans: {
+        Row: {
+          categories: Json | null
+          created_at: string
+          domain: string
+          engines: Json | null
+          id: string
+          is_malicious: boolean
+          positives: number
+          reputation: number | null
+          ssl_issuer: string | null
+          ssl_valid_from: string | null
+          ssl_valid_to: string | null
+          total: number
+          user_id: string
+        }
+        Insert: {
+          categories?: Json | null
+          created_at?: string
+          domain: string
+          engines?: Json | null
+          id?: string
+          is_malicious?: boolean
+          positives?: number
+          reputation?: number | null
+          ssl_issuer?: string | null
+          ssl_valid_from?: string | null
+          ssl_valid_to?: string | null
+          total?: number
+          user_id: string
+        }
+        Update: {
+          categories?: Json | null
+          created_at?: string
+          domain?: string
+          engines?: Json | null
+          id?: string
+          is_malicious?: boolean
+          positives?: number
+          reputation?: number | null
+          ssl_issuer?: string | null
+          ssl_valid_from?: string | null
+          ssl_valid_to?: string | null
+          total?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           alert_preferences: Json | null

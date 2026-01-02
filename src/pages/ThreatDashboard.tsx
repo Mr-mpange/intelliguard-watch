@@ -17,8 +17,10 @@ import {
   Target,
   RefreshCw
 } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, Legend } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { motion } from 'framer-motion';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 interface ScanHistoryItem {
   id: string;
@@ -28,6 +30,17 @@ interface ScanHistoryItem {
   maliciousCount: number;
   suspiciousCount: number;
   reputation: number;
+}
+
+interface DbDomainScan {
+  id: string;
+  domain: string;
+  created_at: string;
+  is_malicious: boolean;
+  positives: number;
+  total: number;
+  reputation: number | null;
+  engines: { name: string; category: string }[] | null;
 }
 
 interface TrendingThreat {
@@ -46,20 +59,25 @@ interface DomainReputation {
   change: number;
 }
 
-// Generate mock scan history
-const generateScanHistory = (): ScanHistoryItem[] => {
-  const domains = ['example.com', 'test-site.org', 'secure-portal.net', 'api.service.io', 'cdn.provider.com', 'auth.platform.dev', 'data.analytics.co', 'staging.app.xyz'];
-  const statuses: ('clean' | 'suspicious' | 'malicious')[] = ['clean', 'clean', 'clean', 'suspicious', 'clean', 'malicious', 'clean', 'suspicious'];
+// Convert database scan to ScanHistoryItem
+const convertDbScan = (scan: DbDomainScan): ScanHistoryItem => {
+  const engines = scan.engines || [];
+  const maliciousCount = engines.filter(e => e.category === 'malicious').length;
+  const suspiciousCount = engines.filter(e => e.category === 'suspicious').length;
   
-  return domains.map((domain, i) => ({
-    id: `scan-${i}`,
-    domain,
-    scannedAt: new Date(Date.now() - (i * 3600000 * 2)).toISOString(),
-    status: statuses[i],
-    maliciousCount: statuses[i] === 'malicious' ? Math.floor(Math.random() * 10) + 3 : statuses[i] === 'suspicious' ? Math.floor(Math.random() * 3) : 0,
-    suspiciousCount: statuses[i] !== 'clean' ? Math.floor(Math.random() * 5) + 1 : 0,
-    reputation: statuses[i] === 'clean' ? 85 + Math.floor(Math.random() * 15) : statuses[i] === 'suspicious' ? 50 + Math.floor(Math.random() * 30) : Math.floor(Math.random() * 40),
-  }));
+  let status: 'clean' | 'suspicious' | 'malicious' = 'clean';
+  if (scan.is_malicious || maliciousCount > 0) status = 'malicious';
+  else if (suspiciousCount > 0) status = 'suspicious';
+  
+  return {
+    id: scan.id,
+    domain: scan.domain,
+    scannedAt: scan.created_at,
+    status,
+    maliciousCount,
+    suspiciousCount,
+    reputation: scan.reputation || 0,
+  };
 };
 
 // Generate trending threats
@@ -104,26 +122,64 @@ const ThreatDashboard = () => {
   const [timelineData, setTimelineData] = useState<{ date: string; threats: number; blocked: number; scans: number }[]>([]);
   const [categoryData, setCategoryData] = useState<{ name: string; value: number; color: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { user } = useAuth();
 
-  useEffect(() => {
-    // Simulate data loading
-    setTimeout(() => {
-      setScanHistory(generateScanHistory());
-      setTrendingThreats(generateTrendingThreats());
+  const fetchScanHistory = async () => {
+    if (!user) return;
+    
+    setIsLoading(true);
+    try {
+      const { data: scans, error } = await supabase
+        .from('domain_scans')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50);
+      
+      if (error) throw error;
+      
+      if (scans && scans.length > 0) {
+        const history = scans.map(scan => convertDbScan(scan as unknown as DbDomainScan));
+        setScanHistory(history);
+        
+        // Generate timeline from real data
+        const timelineMap = new Map<string, { threats: number; scans: number }>();
+        scans.forEach(scan => {
+          const date = new Date(scan.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          const existing = timelineMap.get(date) || { threats: 0, scans: 0 };
+          timelineMap.set(date, {
+            threats: existing.threats + (scan.is_malicious ? 1 : 0),
+            scans: existing.scans + 1,
+          });
+        });
+        
+        const timeline = Array.from(timelineMap.entries()).map(([date, data]) => ({
+          date,
+          threats: data.threats,
+          blocked: Math.floor(data.threats * 0.8),
+          scans: data.scans,
+        })).reverse();
+        
+        if (timeline.length > 0) setTimelineData(timeline);
+        else setTimelineData(generateTimelineData());
+      } else {
+        setTimelineData(generateTimelineData());
+      }
+    } catch (error) {
+      console.error('Error fetching scan history:', error);
       setTimelineData(generateTimelineData());
+    } finally {
+      setTrendingThreats(generateTrendingThreats());
       setCategoryData(generateCategoryData());
       setIsLoading(false);
-    }, 500);
-  }, []);
+    }
+  };
+
+  useEffect(() => {
+    fetchScanHistory();
+  }, [user]);
 
   const refreshData = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setScanHistory(generateScanHistory());
-      setTrendingThreats(generateTrendingThreats());
-      setTimelineData(generateTimelineData());
-      setIsLoading(false);
-    }, 500);
+    fetchScanHistory();
   };
 
   const getStatusBadge = (status: string) => {
