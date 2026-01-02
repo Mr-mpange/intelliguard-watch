@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Settings as SettingsIcon, Bell, Shield, Key, Database, Save, RotateCcw, Monitor, Smartphone, LogOut, Globe } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
+import NotificationPreferences from '@/components/settings/NotificationPreferences';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -218,7 +219,10 @@ const Settings = () => {
           </div>
         </motion.div>
 
-        {/* Notification Settings */}
+        {/* Email Alert Preferences Panel */}
+        <NotificationPreferences />
+
+        {/* Legacy Notification Settings */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -227,31 +231,10 @@ const Settings = () => {
         >
           <div className="flex items-center gap-2 mb-6">
             <Bell className="w-5 h-5 text-primary" />
-            <h2 className="text-xl font-semibold">Notifications</h2>
+            <h2 className="text-xl font-semibold">Other Notifications</h2>
           </div>
 
           <div className="space-y-4">
-            <div className="flex items-center justify-between py-2">
-              <div>
-                <p className="font-medium">Email Notifications</p>
-                <p className="text-sm text-muted-foreground">Receive alerts via email</p>
-              </div>
-              <button
-                onClick={() => setSettings(prev => ({ ...prev, emailNotifications: !prev.emailNotifications }))}
-                className={cn(
-                  'relative w-12 h-6 rounded-full transition-colors',
-                  settings.emailNotifications ? 'bg-primary' : 'bg-muted'
-                )}
-              >
-                <span
-                  className={cn(
-                    'absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform',
-                    settings.emailNotifications && 'translate-x-6'
-                  )}
-                />
-              </button>
-            </div>
-
             <div className="flex items-center justify-between py-2">
               <div>
                 <p className="font-medium">Telegram Notifications</p>

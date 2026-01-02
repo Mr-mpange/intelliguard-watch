@@ -12,6 +12,8 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { auditLog } from '@/services/auditLog';
+import { useAuth } from '@/hooks/useAuth';
+import { sendDomainScanAlert } from '@/services/emailNotifications';
 
 const Analyze = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -31,6 +33,7 @@ const Analyze = () => {
     message?: string;
   } | null>(null);
   const navigate = useNavigate();
+  const { user, profile } = useAuth();
 
   const handleFileSelect = (file: File) => {
     setSelectedFile(file);
@@ -58,6 +61,37 @@ const Analyze = () => {
 
         setDomainScanResult(data);
         await auditLog.domainScan(domainUrl, data.isMalicious);
+
+        // Save scan to database
+        if (user) {
+          const maliciousCount = data.engines?.filter((e: { category: string }) => e.category === 'malicious').length || 0;
+          const suspiciousCount = data.engines?.filter((e: { category: string }) => e.category === 'suspicious').length || 0;
+          
+          await supabase.from('domain_scans').insert({
+            user_id: user.id,
+            domain: domainUrl.replace(/^https?:\/\//, '').split('/')[0],
+            is_malicious: data.isMalicious,
+            positives: data.positives,
+            total: data.total,
+            reputation: data.reputation,
+            categories: data.categories || {},
+            engines: data.engines || [],
+            ssl_issuer: data.sslCertificate?.issuer,
+            ssl_valid_from: data.sslCertificate?.validFrom,
+            ssl_valid_to: data.sslCertificate?.validTo,
+          });
+
+          // Send email alert for malicious domains
+          if (data.isMalicious && user.email) {
+            sendDomainScanAlert(
+              user.email,
+              profile?.full_name || undefined,
+              domainUrl,
+              maliciousCount,
+              suspiciousCount
+            );
+          }
+        }
         
         // Create analysis result for navigation
         const domainResult: AnalysisResult = {
