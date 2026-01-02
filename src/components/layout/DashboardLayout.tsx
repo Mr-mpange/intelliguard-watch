@@ -1,12 +1,15 @@
 import { ReactNode } from 'react';
 import Sidebar from './Sidebar';
 import Breadcrumb from './Breadcrumb';
+import { useRealtimeThreats } from '@/hooks/useRealtimeThreats';
 
 interface DashboardLayoutProps {
   children: ReactNode;
 }
 
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
+  // Enable realtime threat notifications globally
+  useRealtimeThreats();
   return (
     <div className="min-h-screen bg-background flex">
       {/* Background Pattern */}
