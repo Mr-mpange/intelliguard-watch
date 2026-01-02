@@ -3,14 +3,19 @@ import { motion } from 'framer-motion';
 import { Globe, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import DomainCard from '@/components/dashboard/DomainCard';
+import DomainMonitoringPanel from '@/components/monitoring/DomainMonitoringPanel';
 import { mockDomains } from '@/services/mockData';
 import { MonitoredDomain } from '@/types/intelliguard';
 import { toast } from 'sonner';
+import { useRealtimeThreats } from '@/hooks/useRealtimeThreats';
 
 const Monitoring = () => {
   const [domains, setDomains] = useState<MonitoredDomain[]>(mockDomains);
   const [newDomain, setNewDomain] = useState('');
   const [isAdding, setIsAdding] = useState(false);
+
+  // Enable realtime threat notifications
+  useRealtimeThreats();
 
   const handleAddDomain = () => {
     if (!newDomain.trim()) {
@@ -206,6 +211,15 @@ const Monitoring = () => {
               </button>
             </div>
           )}
+        </motion.div>
+
+        {/* Scheduled Domain Monitoring */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          <DomainMonitoringPanel />
         </motion.div>
       </div>
     </DashboardLayout>

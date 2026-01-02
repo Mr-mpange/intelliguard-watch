@@ -101,6 +101,42 @@ export type Database = {
         }
         Relationships: []
       }
+      monitored_domains: {
+        Row: {
+          created_at: string
+          domain: string
+          id: string
+          is_active: boolean
+          last_scanned_at: string | null
+          last_status: string | null
+          scan_frequency: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          domain: string
+          id?: string
+          is_active?: boolean
+          last_scanned_at?: string | null
+          last_status?: string | null
+          scan_frequency?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          domain?: string
+          id?: string
+          is_active?: boolean
+          last_scanned_at?: string | null
+          last_status?: string | null
+          scan_frequency?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           alert_preferences: Json | null
