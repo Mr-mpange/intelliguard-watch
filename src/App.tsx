@@ -16,6 +16,7 @@ import ThreatInvestigation from "./pages/ThreatInvestigation";
 import ThreatDashboard from "./pages/ThreatDashboard";
 import Admin from "./pages/Admin";
 import Profile from "./pages/Profile";
+import Analytics from "./pages/Analytics";
 
 const queryClient = new QueryClient();
 
@@ -38,6 +39,7 @@ const App = () => (
             <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/threat-intelligence" element={<ProtectedRoute><ThreatDashboard /></ProtectedRoute>} />
+            <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
             <Route path="/dashboard" element={<Navigate to="/" replace />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

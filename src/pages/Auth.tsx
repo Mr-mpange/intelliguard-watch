@@ -202,8 +202,12 @@ const Auth = () => {
             <Button
               type="button"
               variant="outline"
-              className="w-full mb-6 h-12"
-              onClick={handleGoogleSignIn}
+              className="w-full mb-6 h-12 cursor-pointer"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleGoogleSignIn();
+              }}
               disabled={isLoading}
             >
               <Chrome className="w-5 h-5 mr-2" />
@@ -287,7 +291,7 @@ const Auth = () => {
 
               <Button
                 type="submit"
-                className="w-full h-12 bg-gradient-to-r from-primary to-cyber-blue hover:opacity-90"
+                className="w-full h-12 bg-gradient-to-r from-primary to-cyber-blue hover:opacity-90 cursor-pointer"
                 disabled={isLoading}
               >
                 {isLoading ? (
