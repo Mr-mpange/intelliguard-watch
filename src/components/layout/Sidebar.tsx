@@ -13,7 +13,8 @@ import {
   LogOut,
   User,
   ShieldCheck,
-  TrendingUp
+  TrendingUp,
+  LineChart
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
@@ -33,6 +34,7 @@ const navItems = [
   { path: '/analyze', icon: Search, label: 'Analyze Traffic' },
   { path: '/results', icon: BarChart3, label: 'Results' },
   { path: '/threat-intelligence', icon: TrendingUp, label: 'Threat Intel' },
+  { path: '/analytics', icon: LineChart, label: 'Analytics' },
   { path: '/alerts', icon: Bell, label: 'Alerts' },
   { path: '/monitoring', icon: Globe, label: 'Domain Monitor' },
   { path: '/settings', icon: Settings, label: 'Settings' },
