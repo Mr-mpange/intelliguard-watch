@@ -7,15 +7,11 @@ import DomainMonitoringPanel from '@/components/monitoring/DomainMonitoringPanel
 import { mockDomains } from '@/services/mockData';
 import { MonitoredDomain } from '@/types/intelliguard';
 import { toast } from 'sonner';
-import { useRealtimeThreats } from '@/hooks/useRealtimeThreats';
 
 const Monitoring = () => {
   const [domains, setDomains] = useState<MonitoredDomain[]>(mockDomains);
   const [newDomain, setNewDomain] = useState('');
   const [isAdding, setIsAdding] = useState(false);
-
-  // Enable realtime threat notifications
-  useRealtimeThreats();
 
   const handleAddDomain = () => {
     if (!newDomain.trim()) {
