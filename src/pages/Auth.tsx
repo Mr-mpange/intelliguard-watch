@@ -291,7 +291,7 @@ const Auth = () => {
 
               <Button
                 type="submit"
-                className="w-full h-12 bg-gradient-to-r from-primary to-cyber-blue hover:opacity-90 cursor-pointer"
+                className="w-full h-12 bg-gradient-to-r from-primary to-cyber-blue hover:opacity-90"
                 disabled={isLoading}
               >
                 {isLoading ? (
