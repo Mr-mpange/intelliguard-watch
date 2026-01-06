@@ -3,12 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartConfig } from '@/components/ui/chart';
-import { Calendar, TrendingUp, AlertTriangle, Shield, ChevronDown, ChevronRight } from 'lucide-react';
+import { Calendar, TrendingUp, AlertTriangle, Shield, ChevronDown, ChevronRight, Bell, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format, subDays, eachDayOfInterval, startOfDay } from 'date-fns';
 import { ThreatSeverity, AttackType } from '@/types/intelliguard';
-
-type TimeRange = '7d' | '30d' | '90d';
+import { processTimelineThreats, ThreatEvent } from '@/services/automatedAlerts';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
 
 interface ThreatDataPoint {
   date: string;
@@ -91,9 +92,13 @@ const attackTypeColors: Record<string, string> = {
   'Man-in-the-Middle': 'hsl(173 80% 40%)',
 };
 
+type TimeRange = '7d' | '30d' | '90d';
+
 export const ThreatTimeline = () => {
+  const { user } = useAuth();
   const [timeRange, setTimeRange] = useState<TimeRange>('7d');
   const [expandedDay, setExpandedDay] = useState<string | null>(null);
+  const [isSendingAlerts, setIsSendingAlerts] = useState(false);
   
   const daysMap = { '7d': 7, '30d': 30, '90d': 90 };
   
@@ -134,6 +139,70 @@ export const ThreatTimeline = () => {
   };
   
   const expandedDayData = expandedDay ? data.find((d) => d.date === expandedDay) : null;
+
+  // Convert timeline data to threat events for alerting
+  const generateThreatEvents = (): ThreatEvent[] => {
+    const events: ThreatEvent[] = [];
+    
+    data.forEach((day) => {
+      // Add critical threats
+      for (let i = 0; i < day.critical; i++) {
+        const attackType = Object.entries(day.attackTypes)
+          .filter(([type, count]) => type !== 'Normal' && count > 0)
+          .sort(() => Math.random() - 0.5)[0];
+        
+        events.push({
+          severity: 'critical',
+          type: attackType?.[0] || 'Unknown',
+          description: `Critical threat detected: ${attackType?.[0] || 'Unknown attack'} on ${day.date}`,
+          confidence: 85 + Math.floor(Math.random() * 15),
+          timestamp: day.timestamp,
+        });
+      }
+      
+      // Add high severity threats
+      for (let i = 0; i < Math.min(day.high, 3); i++) {
+        const attackType = Object.entries(day.attackTypes)
+          .filter(([type, count]) => type !== 'Normal' && count > 0)
+          .sort(() => Math.random() - 0.5)[0];
+        
+        events.push({
+          severity: 'high',
+          type: attackType?.[0] || 'Unknown',
+          description: `High-severity threat: ${attackType?.[0] || 'Unknown attack'} on ${day.date}`,
+          confidence: 70 + Math.floor(Math.random() * 20),
+          timestamp: day.timestamp,
+        });
+      }
+    });
+    
+    return events;
+  };
+
+  const handleSendAlerts = async () => {
+    if (!user) {
+      toast.error('You must be logged in to send alerts');
+      return;
+    }
+
+    setIsSendingAlerts(true);
+    try {
+      const events = generateThreatEvents();
+      const { totalAlerts, errors } = await processTimelineThreats(user.id, events);
+      
+      if (totalAlerts > 0) {
+        toast.success(`Sent ${totalAlerts} threat alert(s) to your email`);
+      } else if (errors.length > 0) {
+        toast.error(`Failed to send alerts: ${errors[0]}`);
+      } else {
+        toast.info('No critical threats to alert on');
+      }
+    } catch (error) {
+      toast.error('Failed to process threat alerts');
+    } finally {
+      setIsSendingAlerts(false);
+    }
+  };
   
   return (
     <div className="space-y-6">
@@ -147,7 +216,20 @@ export const ThreatTimeline = () => {
           <p className="text-muted-foreground">Attack patterns and severity trends over time</p>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSendAlerts}
+            disabled={isSendingAlerts || stats.criticalThreats === 0}
+          >
+            {isSendingAlerts ? (
+              <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+            ) : (
+              <Bell className="w-4 h-4 mr-1" />
+            )}
+            Send Alerts
+          </Button>
           {(['7d', '30d', '90d'] as TimeRange[]).map((range) => (
             <Button
               key={range}
