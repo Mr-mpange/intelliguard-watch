@@ -8,3 +8,9 @@ verify_jwt = false
 
 [functions.scheduled-scan]
 verify_jwt = false
+
+[functions.enrich-threat-intel]
+verify_jwt = false
+
+[functions.scheduled-report]
+verify_jwt = false
