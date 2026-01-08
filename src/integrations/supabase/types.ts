@@ -173,6 +173,96 @@ export type Database = {
         }
         Relationships: []
       }
+      scheduled_reports: {
+        Row: {
+          created_at: string
+          frequency: string
+          id: string
+          include_audit_logs: boolean
+          include_monitored_domains: boolean
+          include_scan_history: boolean
+          include_threat_summary: boolean
+          is_active: boolean
+          last_sent_at: string | null
+          next_scheduled_at: string
+          report_name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          frequency: string
+          id?: string
+          include_audit_logs?: boolean
+          include_monitored_domains?: boolean
+          include_scan_history?: boolean
+          include_threat_summary?: boolean
+          is_active?: boolean
+          last_sent_at?: string | null
+          next_scheduled_at?: string
+          report_name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          frequency?: string
+          id?: string
+          include_audit_logs?: boolean
+          include_monitored_domains?: boolean
+          include_scan_history?: boolean
+          include_threat_summary?: boolean
+          is_active?: boolean
+          last_sent_at?: string | null
+          next_scheduled_at?: string
+          report_name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      threat_alerts: {
+        Row: {
+          confidence: number | null
+          created_at: string
+          description: string
+          id: string
+          is_read: boolean
+          severity: string
+          source_domain: string | null
+          source_ip: string | null
+          threat_type: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string
+          description: string
+          id?: string
+          is_read?: boolean
+          severity: string
+          source_domain?: string | null
+          source_ip?: string | null
+          threat_type: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string
+          description?: string
+          id?: string
+          is_read?: boolean
+          severity?: string
+          source_domain?: string | null
+          source_ip?: string | null
+          threat_type?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
