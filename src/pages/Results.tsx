@@ -12,6 +12,7 @@ import {
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import ThreatCard from '@/components/dashboard/ThreatCard';
 import MetricCard from '@/components/dashboard/MetricCard';
+import ThreatIntelPanel from '@/components/dashboard/ThreatIntelPanel';
 import { mockPredictions } from '@/services/mockData';
 import { ThreatPrediction, ThreatSeverity, AttackType } from '@/types/intelliguard';
 import { cn } from '@/lib/utils';
@@ -275,6 +276,12 @@ const Results = () => {
               </div>
             </div>
           </motion.div>
+        </div>
+
+        {/* Threat Intelligence Enrichment */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <ThreatIntelPanel domain="example.com" />
+          <ThreatIntelPanel ip="8.8.8.8" />
         </div>
 
         {/* Filters & Results Grid */}

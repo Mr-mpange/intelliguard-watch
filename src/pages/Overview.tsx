@@ -8,6 +8,7 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import MetricCard from '@/components/dashboard/MetricCard';
 import AlertItem from '@/components/dashboard/AlertItem';
 import StatusPanel from '@/components/dashboard/StatusPanel';
+import RealtimeAlertPanel from '@/components/dashboard/RealtimeAlertPanel';
 import { mockAlerts, mockSystemHealth, mockPredictions, getRealtimeStats } from '@/services/mockData';
 import { useState, useEffect } from 'react';
 
@@ -245,6 +246,9 @@ const Overview = () => {
             </div>
           </motion.div>
         </div>
+
+        {/* Real-time Alerts Panel */}
+        <RealtimeAlertPanel />
 
         {/* Status and Alerts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Settings as SettingsIcon, Bell, Shield, Key, Database, Save, RotateCcw, Monitor, Smartphone, LogOut, Globe } from 'lucide-react';
+import { Settings as SettingsIcon, Bell, Shield, Key, Database, Save, RotateCcw, Monitor, Smartphone, LogOut, Globe, Calendar } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Settings as SettingsType } from '@/types/intelliguard';
 import { cn } from '@/lib/utils';
@@ -9,6 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import NotificationPreferences from '@/components/settings/NotificationPreferences';
+import ScheduledReports from '@/components/settings/ScheduledReports';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -221,6 +222,9 @@ const Settings = () => {
 
         {/* Email Alert Preferences Panel */}
         <NotificationPreferences />
+
+        {/* Scheduled Reports */}
+        <ScheduledReports />
 
         {/* Legacy Notification Settings */}
         <motion.div
