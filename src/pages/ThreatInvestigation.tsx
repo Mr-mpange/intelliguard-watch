@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { 
   ArrowLeft, Shield, AlertTriangle, Zap, Clock, Server, 
   Globe, Activity, Terminal, FileWarning, CheckCircle2,
-  Copy, ExternalLink, ChevronDown, ChevronUp
+  Copy, ExternalLink, ChevronDown, ChevronUp, Download
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import DashboardLayout from '@/components/layout/DashboardLayout';
@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import ThreatIntelPanel from '@/components/dashboard/ThreatIntelPanel';
 import { mockPredictions } from '@/services/mockData';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -23,6 +24,7 @@ const ThreatInvestigation = () => {
     packet: true,
     timeline: true,
     mitigations: true,
+    threatIntel: true,
   });
 
   // Find the threat prediction
@@ -515,6 +517,37 @@ const ThreatInvestigation = () => {
                       </div>
                     </div>
                   ))}
+                </div>
+              </CardContent>
+            )}
+          </Card>
+        </motion.div>
+
+        {/* Threat Intelligence Enrichment */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.45 }}
+          className="mb-8"
+        >
+          <Card className="glass-card">
+            <CardHeader 
+              className="cursor-pointer"
+              onClick={() => toggleSection('threatIntel')}
+            >
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Globe className="w-5 h-5" />
+                  Threat Intelligence Enrichment
+                </div>
+                {expandedSections.threatIntel ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+              </CardTitle>
+            </CardHeader>
+            {expandedSections.threatIntel && (
+              <CardContent>
+                <div className="grid md:grid-cols-2 gap-6">
+                  <ThreatIntelPanel ip={threat.sourceIP} />
+                  <ThreatIntelPanel ip={threat.destinationIP} />
                 </div>
               </CardContent>
             )}

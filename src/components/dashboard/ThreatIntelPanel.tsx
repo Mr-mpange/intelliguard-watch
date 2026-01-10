@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Globe, Shield, AlertTriangle, ExternalLink, RefreshCw, Loader2 } from 'lucide-react';
+import { Globe, Shield, AlertTriangle, RefreshCw, Loader2 } from 'lucide-react';
 import { enrichThreatIntelligence, EnrichedThreatData } from '@/services/threatIntelligence';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import ThreatIntelExport from './ThreatIntelExport';
 
 interface ThreatIntelPanelProps {
   domain?: string;
@@ -61,28 +62,31 @@ const ThreatIntelPanel = ({ domain, ip }: ThreatIntelPanelProps) => {
           <Globe className="w-5 h-5 text-primary" />
           <h3 className="text-lg font-semibold">Threat Intel: <span className="font-mono text-primary">{targetLabel}</span></h3>
         </div>
-        <button
-          onClick={handleEnrich}
-          disabled={loading || (!domain && !ip)}
-          className={cn(
-            "flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors",
-            loading 
-              ? "bg-muted cursor-not-allowed" 
-              : "bg-primary text-primary-foreground hover:bg-primary/90"
-          )}
-        >
-          {loading ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Enriching...
-            </>
-          ) : (
-            <>
-              <RefreshCw className="w-4 h-4" />
-              Enrich Data
-            </>
-          )}
-        </button>
+        <div className="flex items-center gap-2">
+          {intelData && <ThreatIntelExport data={intelData} />}
+          <button
+            onClick={handleEnrich}
+            disabled={loading || (!domain && !ip)}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors",
+              loading 
+                ? "bg-muted cursor-not-allowed" 
+                : "bg-primary text-primary-foreground hover:bg-primary/90"
+            )}
+          >
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Enriching...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="w-4 h-4" />
+                Enrich
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {!hasSearched && !loading && (
