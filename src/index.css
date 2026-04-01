@@ -106,7 +106,7 @@
 
   .glass-card::before {
     content: '';
-    @apply absolute inset-0 rounded-xl opacity-0 transition-opacity duration-300;
+    @apply absolute inset-0 rounded-xl opacity-0 transition-opacity duration-300 pointer-events-none;
     background: linear-gradient(135deg, hsl(var(--cyber-cyan) / 0.1) 0%, transparent 50%);
   }
 
