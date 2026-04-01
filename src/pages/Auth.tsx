@@ -105,13 +105,33 @@ const Auth = () => {
     setIsLoading(true);
     setErrors({});
     
-    const { error } = await signInWithGoogle();
-    
-    if (error) {
-      setErrors({ general: error.message });
+    try {
+      const { lovable } = await import('@/integrations/lovable/index');
+      const result = await lovable.auth.signInWithOAuth('google', {
+        redirect_uri: window.location.origin,
+      });
+
+      if (result.error) {
+        setErrors({ general: result.error.message || 'Google sign-in failed' });
+        setIsLoading(false);
+        return;
+      }
+
+      if (result.redirected) {
+        // Browser will redirect to Google - just return
+        return;
+      }
+
+      // Tokens received and session set - user is authenticated
+      toast({
+        title: 'Welcome!',
+        description: 'You have successfully signed in with Google.',
+      });
+      navigate('/');
+    } catch (err) {
+      setErrors({ general: 'Google sign-in failed. Please try again.' });
       setIsLoading(false);
     }
-    // Don't set loading to false on success - redirect will happen
   };
 
   return (
