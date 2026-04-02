@@ -1,4 +1,5 @@
 import { NavLink as RouterNavLink, useLocation } from 'react-router-dom';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { motion } from 'framer-motion';
 import { 
   LayoutDashboard, 
