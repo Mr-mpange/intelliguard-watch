@@ -130,11 +130,32 @@ const Analyze = () => {
             : 'No threats detected',
         });
       } else {
-        const analysisResult = await analyzeTraffic(selectedFile!);
+        // Read file content and send to AI analysis edge function
+        const fileContent = await selectedFile!.text();
+        
+        const { data, error } = await supabase.functions.invoke('analyze-traffic', {
+          body: { trafficData: fileContent, fileName: selectedFile!.name },
+        });
+
+        if (error) throw error;
+        
+        const analysisResult: AnalysisResult = {
+          summary: data.summary || { totalRecords: 0, threats: 0, zeroDay: 0, normal: 0, avgConfidence: 0 },
+          predictions: (data.predictions || []).map((p: Record<string, unknown>) => ({
+            ...p,
+            confidence: Number(p.confidence) || 0,
+            anomalyScore: Number(p.anomalyScore) || 0,
+            port: Number(p.port) || 0,
+          })),
+          attackDistribution: data.attackDistribution || [],
+          severityDistribution: data.severityDistribution || [],
+          timelineData: data.timelineData || [],
+        };
+        
         setResult(analysisResult);
         await auditLog.fileAnalysis(selectedFile!.name, analysisResult.summary.threats);
-        toast.success('Analysis complete!', {
-          description: `Processed ${analysisResult.summary.totalRecords} records`,
+        toast.success('AI Analysis complete!', {
+          description: `Found ${analysisResult.summary.threats} threats in ${analysisResult.summary.totalRecords} records`,
         });
       }
     } catch (error: unknown) {
