@@ -45,6 +45,7 @@ const adminNavItem = { path: '/admin', icon: ShieldCheck, label: 'Admin Dashboar
 
 const Sidebar = () => {
   const location = useLocation();
+  const isMobile = useIsMobile();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const { user, profile, signOut } = useAuth();
