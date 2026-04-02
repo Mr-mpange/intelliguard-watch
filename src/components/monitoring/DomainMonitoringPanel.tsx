@@ -210,76 +210,82 @@ const DomainMonitoringPanel = () => {
             <p className="text-sm">Add a domain above to start automatic scanning</p>
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow className="border-border/50">
-                <TableHead>Domain</TableHead>
-                <TableHead>Frequency</TableHead>
-                <TableHead>Last Status</TableHead>
-                <TableHead>Last Scanned</TableHead>
-                <TableHead>Active</TableHead>
-                <TableHead className="w-12"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <AnimatePresence>
-                {domains.map((domain) => (
-                  <motion.tr
-                    key={domain.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="border-border/50"
-                  >
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        <Globe className="w-4 h-4 text-muted-foreground" />
-                        {domain.domain}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                        <Clock className="w-3 h-3" />
-                        {domain.scan_frequency}
-                      </div>
-                    </TableCell>
-                    <TableCell>{getStatusBadge(domain.last_status)}</TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
-                      {domain.last_scanned_at 
-                        ? new Date(domain.last_scanned_at).toLocaleString()
-                        : 'Never'}
-                    </TableCell>
-                    <TableCell>
-                      <button
-                        onClick={() => toggleActive(domain.id, domain.is_active)}
-                        className={cn(
-                          'relative w-10 h-5 rounded-full transition-colors',
-                          domain.is_active ? 'bg-primary' : 'bg-muted'
-                        )}
-                      >
-                        <span
-                          className={cn(
-                            'absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform',
-                            domain.is_active && 'translate-x-5'
-                          )}
-                        />
-                      </button>
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeDomain(domain.id)}
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </TableCell>
-                  </motion.tr>
-                ))}
-              </AnimatePresence>
-            </TableBody>
-          </Table>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-border/50">
+                  <TableHead>Domain</TableHead>
+                  <TableHead>Frequency</TableHead>
+                  <TableHead>Last Status</TableHead>
+                  <TableHead>Last Scanned</TableHead>
+                  <TableHead className="text-center w-20">Active</TableHead>
+                  <TableHead className="text-center w-16">Delete</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <AnimatePresence>
+                  {domains.map((domain) => (
+                    <motion.tr
+                      key={domain.id}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="border-border/50"
+                    >
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          <Globe className="w-4 h-4 text-muted-foreground shrink-0" />
+                          <span className="truncate max-w-[200px]">{domain.domain}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground capitalize">
+                          <Clock className="w-3 h-3 shrink-0" />
+                          {domain.scan_frequency}
+                        </div>
+                      </TableCell>
+                      <TableCell>{getStatusBadge(domain.last_status)}</TableCell>
+                      <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
+                        {domain.last_scanned_at 
+                          ? new Date(domain.last_scanned_at).toLocaleString()
+                          : 'Never'}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex justify-center">
+                          <button
+                            onClick={() => toggleActive(domain.id, domain.is_active)}
+                            className={cn(
+                              'relative w-10 h-5 rounded-full transition-colors shrink-0',
+                              domain.is_active ? 'bg-primary' : 'bg-muted'
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                'absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform',
+                                domain.is_active && 'translate-x-5'
+                              )}
+                            />
+                          </button>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex justify-center">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeDomain(domain.id)}
+                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </motion.tr>
+                  ))}
+                </AnimatePresence>
+              </TableBody>
+            </Table>
+          </div>
         )}
       </CardContent>
     </Card>
