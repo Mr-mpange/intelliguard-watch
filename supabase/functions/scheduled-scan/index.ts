@@ -143,6 +143,20 @@ serve(async (req: Request) => {
           })
           .eq('id', monitoredDomain.id);
 
+        // Create threat alert if malicious
+        if (scanStatus === 'malicious' || scanStatus === 'suspicious') {
+          await supabase.from('threat_alerts').insert({
+            user_id: monitoredDomain.user_id,
+            title: `${scanStatus === 'malicious' ? 'Malicious' : 'Suspicious'} Activity: ${monitoredDomain.domain}`,
+            description: `Scheduled scan detected ${positives} security vendor${positives !== 1 ? 's' : ''} flagging ${monitoredDomain.domain}. Engines: ${engines.slice(0, 3).map(e => e.name).join(', ')}${engines.length > 3 ? '...' : ''}`,
+            severity: scanStatus === 'malicious' ? 'critical' : 'medium',
+            threat_type: 'Domain Threat',
+            source_domain: monitoredDomain.domain,
+            confidence: Math.round((positives / (total || 1)) * 100),
+          });
+          console.log(`Alert created for ${monitoredDomain.domain}`);
+        }
+
         results.push({ domain: monitoredDomain.domain, status: scanStatus });
         console.log(`Scan complete for ${monitoredDomain.domain}: ${scanStatus}`);
 
