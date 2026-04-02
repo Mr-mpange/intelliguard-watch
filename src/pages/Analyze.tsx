@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search, FileUp, Play, Loader2, CheckCircle2, Info, Globe, Upload, AlertTriangle, ShieldCheck, ExternalLink } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import FileUpload from '@/components/dashboard/FileUpload';
-import { analyzeTraffic } from '@/services/mockData';
+// AI-powered analysis is now handled by the analyze-traffic edge function
 import { AnalysisResult } from '@/types/intelliguard';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
