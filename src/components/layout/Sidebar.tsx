@@ -1,4 +1,5 @@
 import { NavLink as RouterNavLink, useLocation } from 'react-router-dom';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { motion } from 'framer-motion';
 import { 
   LayoutDashboard, 
@@ -44,6 +45,7 @@ const adminNavItem = { path: '/admin', icon: ShieldCheck, label: 'Admin Dashboar
 
 const Sidebar = () => {
   const location = useLocation();
+  const isMobile = useIsMobile();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const { user, profile, signOut } = useAuth();
@@ -92,12 +94,12 @@ const Sidebar = () => {
 
       {/* Sidebar */}
       <motion.aside
-        initial={{ x: -280 }}
-        animate={{ x: isMobileOpen ? 0 : -280 }}
+        initial={isMobile ? { x: -280 } : { x: 0 }}
+        animate={isMobile ? { x: isMobileOpen ? 0 : -280 } : { x: 0 }}
         className={cn(
           'fixed left-0 top-0 bottom-0 w-[280px] bg-sidebar border-r border-sidebar-border z-50',
           'flex flex-col',
-          'lg:translate-x-0 lg:static'
+          'lg:static'
         )}
       >
         {/* Logo */}
