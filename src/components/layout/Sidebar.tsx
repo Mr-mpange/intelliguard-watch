@@ -94,12 +94,12 @@ const Sidebar = () => {
 
       {/* Sidebar */}
       <motion.aside
-        initial={{ x: -280 }}
-        animate={{ x: isMobileOpen ? 0 : -280 }}
+        initial={isMobile ? { x: -280 } : { x: 0 }}
+        animate={isMobile ? { x: isMobileOpen ? 0 : -280 } : { x: 0 }}
         className={cn(
           'fixed left-0 top-0 bottom-0 w-[280px] bg-sidebar border-r border-sidebar-border z-50',
           'flex flex-col',
-          'lg:translate-x-0 lg:static'
+          'lg:static'
         )}
       >
         {/* Logo */}
