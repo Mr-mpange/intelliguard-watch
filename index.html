@@ -11,17 +11,26 @@
     <meta property="og:title" content="IntelliGuard | Cyber Attack Detection System" />
     <meta property="og:description" content="ML-powered cyber attack detection and website monitoring with real-time threat intelligence and zero-day anomaly detection." />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+    <meta property="og:image" content="" />
 
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@IntelliGuard" />
-    <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
-    
     <link rel="canonical" href="/" />
   </head>
 
   <body>
     <div id="root"></div>
+    <!-- GitHub Pages SPA redirect handler -->
+    <script type="text/javascript">
+      (function(l) {
+        if (l.search[1] === '/') {
+          var decoded = l.search.slice(1).split('&').map(function(s) {
+            return s.replace(/~and~/g, '&')
+          }).join('?');
+          window.history.replaceState(null, null,
+            l.pathname.slice(0, -1) + decoded + l.hash
+          );
+        }
+      }(window.location))
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
