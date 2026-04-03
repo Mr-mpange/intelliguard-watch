@@ -1,17 +1,53 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, Filter, Trash2, CheckCheck, Volume2, VolumeX } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import AlertItem from '@/components/dashboard/AlertItem';
-import { mockAlerts } from '@/services/mockData';
 import { Alert, ThreatSeverity } from '@/types/intelliguard';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 const Alerts = () => {
-  const [alerts, setAlerts] = useState<Alert[]>(mockAlerts);
+  const { user } = useAuth();
+  const [alerts, setAlerts] = useState<Alert[]>([]);
   const [filter, setFilter] = useState<'all' | 'unread' | ThreatSeverity>('all');
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch real alerts from DB
+  useEffect(() => {
+    if (!user) return;
+    const fetchAlerts = async () => {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('threat_alerts')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching alerts:', error);
+        toast.error('Failed to load alerts');
+      } else if (data) {
+        const mapped: Alert[] = data.map(a => ({
+          id: a.id,
+          timestamp: a.created_at,
+          type: 'threat' as const,
+          severity: a.severity as Alert['severity'],
+          title: a.title,
+          message: a.description,
+          isRead: a.is_read,
+          sourceIP: a.source_ip || undefined,
+          attackType: a.threat_type as Alert['attackType'],
+        }));
+        setAlerts(mapped);
+      }
+      setLoading(false);
+    };
+    fetchAlerts();
+  }, [user]);
 
   const unreadCount = alerts.filter(a => !a.isRead).length;
 
@@ -21,17 +57,41 @@ const Alerts = () => {
     return alert.severity === filter;
   });
 
-  const dismissAlert = (id: string) => {
+  const dismissAlert = async (id: string) => {
+    const { error } = await supabase.from('threat_alerts').delete().eq('id', id);
+    if (error) {
+      toast.error('Failed to dismiss alert');
+      return;
+    }
     setAlerts(prev => prev.filter(a => a.id !== id));
     toast.success('Alert dismissed');
   };
 
-  const markAllRead = () => {
+  const markAllRead = async () => {
+    if (!user) return;
+    const { error } = await supabase
+      .from('threat_alerts')
+      .update({ is_read: true })
+      .eq('user_id', user.id)
+      .eq('is_read', false);
+    if (error) {
+      toast.error('Failed to mark alerts as read');
+      return;
+    }
     setAlerts(prev => prev.map(a => ({ ...a, isRead: true })));
     toast.success('All alerts marked as read');
   };
 
-  const clearAll = () => {
+  const clearAll = async () => {
+    if (!user) return;
+    const { error } = await supabase
+      .from('threat_alerts')
+      .delete()
+      .eq('user_id', user.id);
+    if (error) {
+      toast.error('Failed to clear alerts');
+      return;
+    }
     setAlerts([]);
     toast.success('All alerts cleared');
   };
@@ -81,7 +141,6 @@ const Alerts = () => {
                 'p-2 rounded-lg transition-colors',
                 soundEnabled ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
               )}
-              title={soundEnabled ? 'Mute notifications' : 'Enable notifications'}
             >
               {soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
             </button>
@@ -138,36 +197,42 @@ const Alerts = () => {
           transition={{ delay: 0.2 }}
           className="space-y-4"
         >
-          <AnimatePresence mode="popLayout">
-            {filteredAlerts.length > 0 ? (
-              filteredAlerts.map((alert) => (
-                <AlertItem 
-                  key={alert.id} 
-                  alert={alert} 
-                  onDismiss={dismissAlert}
-                />
-              ))
-            ) : (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="glass-card p-12 text-center"
-              >
-                <div className="inline-flex p-4 rounded-full bg-cyber-green/10 mb-4">
-                  <Bell className="w-8 h-8 text-cyber-green" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2">No Alerts</h3>
-                <p className="text-muted-foreground">
-                  {filter === 'all' 
-                    ? 'Your system is running smoothly with no active alerts'
-                    : `No ${filter} alerts at this time`}
-                </p>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {loading ? (
+            <div className="glass-card p-12 text-center">
+              <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4" />
+              <p className="text-muted-foreground">Loading alerts...</p>
+            </div>
+          ) : (
+            <AnimatePresence mode="popLayout">
+              {filteredAlerts.length > 0 ? (
+                filteredAlerts.map((alert) => (
+                  <AlertItem 
+                    key={alert.id} 
+                    alert={alert} 
+                    onDismiss={dismissAlert}
+                  />
+                ))
+              ) : (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="glass-card p-12 text-center"
+                >
+                  <div className="inline-flex p-4 rounded-full bg-cyber-green/10 mb-4">
+                    <Bell className="w-8 h-8 text-cyber-green" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">No Alerts</h3>
+                  <p className="text-muted-foreground">
+                    {filter === 'all' 
+                      ? 'No alerts yet — run a scan to generate threat alerts'
+                      : `No ${filter} alerts at this time`}
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          )}
         </motion.div>
 
-        {/* Real-time Notice */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

@@ -9,38 +9,128 @@ import MetricCard from '@/components/dashboard/MetricCard';
 import AlertItem from '@/components/dashboard/AlertItem';
 import StatusPanel from '@/components/dashboard/StatusPanel';
 import RealtimeAlertPanel from '@/components/dashboard/RealtimeAlertPanel';
-import { mockAlerts, mockSystemHealth, mockPredictions, getRealtimeStats } from '@/services/mockData';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { SystemHealth, Alert } from '@/types/intelliguard';
 
 const Overview = () => {
-  const [realtimeStats, setRealtimeStats] = useState(getRealtimeStats());
-  const [health, setHealth] = useState(mockSystemHealth);
+  const { user } = useAuth();
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [threatCount, setThreatCount] = useState(0);
+  const [scanCount, setScanCount] = useState(0);
+  const [realtimeStats, setRealtimeStats] = useState({
+    packetsPerSecond: 0,
+    bandwidthMbps: 0,
+    activeConnections: 0,
+    threatLevel: 'normal' as string,
+  });
 
-  // Simulate real-time updates
+  const health: SystemHealth = useMemo(() => ({
+    status: threatCount > 5 ? 'warning' : 'healthy',
+    uptime: 99.97,
+    lastScan: new Date().toISOString(),
+    threatsBlocked: threatCount,
+    packetsAnalyzed: scanCount,
+    modelVersion: 'v2.4.1-AI',
+    cpuUsage: 23,
+    memoryUsage: 45,
+  }), [threatCount, scanCount]);
+
+  // Fetch real alerts from DB
+  useEffect(() => {
+    if (!user) return;
+    const fetchData = async () => {
+      const [alertsRes, scansRes] = await Promise.all([
+        supabase
+          .from('threat_alerts')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(20),
+        supabase
+          .from('domain_scans')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id),
+      ]);
+
+      if (alertsRes.data) {
+        setThreatCount(alertsRes.data.length);
+        // Map DB alerts to Alert type for AlertItem component
+        const mapped: Alert[] = alertsRes.data.map(a => ({
+          id: a.id,
+          timestamp: a.created_at,
+          type: 'threat' as const,
+          severity: a.severity as Alert['severity'],
+          title: a.title,
+          message: a.description,
+          isRead: a.is_read,
+          sourceIP: a.source_ip || undefined,
+          attackType: a.threat_type as Alert['attackType'],
+        }));
+        setAlerts(mapped);
+      }
+      if (scansRes.count !== null) {
+        setScanCount(scansRes.count);
+      }
+    };
+    fetchData();
+  }, [user]);
+
+  // Simulated live stats ticker (cosmetic)
   useEffect(() => {
     const interval = setInterval(() => {
-      setRealtimeStats(getRealtimeStats());
+      setRealtimeStats({
+        packetsPerSecond: Math.floor(Math.random() * 5000) + 1000,
+        bandwidthMbps: Math.floor(Math.random() * 100) + 50,
+        activeConnections: Math.floor(Math.random() * 500) + 100,
+        threatLevel: threatCount > 5 ? 'elevated' : 'normal',
+      });
     }, 3000);
     return () => clearInterval(interval);
-  }, []);
+  }, [threatCount]);
 
-  const threats = mockPredictions.filter(p => p.attackType !== 'Normal');
-  const zeroDay = mockPredictions.filter(p => p.isZeroDay);
+  // Build attack distribution from real alerts
+  const attackDistribution = useMemo(() => {
+    const counts: Record<string, number> = {};
+    alerts.forEach(a => {
+      if (a.attackType && a.attackType !== 'Normal') {
+        counts[a.attackType] = (counts[a.attackType] || 0) + 1;
+      }
+    });
+    const colors = [
+      'hsl(var(--cyber-red))', 'hsl(var(--cyber-orange))', 'hsl(var(--cyber-yellow))',
+      'hsl(var(--cyber-purple))', 'hsl(var(--cyber-blue))',
+    ];
+    const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    if (entries.length === 0) {
+      return [{ name: 'No threats', value: 1, color: 'hsl(var(--cyber-green))' }];
+    }
+    return entries.map(([name, value], i) => ({
+      name,
+      value,
+      color: colors[i % colors.length],
+    }));
+  }, [alerts]);
 
-  // Chart data
-  const timelineData = Array.from({ length: 24 }, (_, i) => ({
-    time: `${String(i).padStart(2, '0')}:00`,
-    threats: Math.floor(Math.random() * 15),
-    normal: Math.floor(Math.random() * 80) + 40,
-  }));
+  // Build timeline from real alerts (group by hour)
+  const timelineData = useMemo(() => {
+    const hours: Record<string, { threats: number; normal: number }> = {};
+    for (let i = 0; i < 24; i++) {
+      const key = `${String(i).padStart(2, '0')}:00`;
+      hours[key] = { threats: 0, normal: 0 };
+    }
+    alerts.forEach(a => {
+      const hour = new Date(a.timestamp).getHours();
+      const key = `${String(hour).padStart(2, '0')}:00`;
+      if (hours[key]) {
+        hours[key].threats++;
+      }
+    });
+    return Object.entries(hours).map(([time, data]) => ({ time, ...data }));
+  }, [alerts]);
 
-  const attackDistribution = [
-    { name: 'DDoS', value: 35, color: 'hsl(var(--cyber-red))' },
-    { name: 'SQL Injection', value: 25, color: 'hsl(var(--cyber-orange))' },
-    { name: 'XSS', value: 20, color: 'hsl(var(--cyber-yellow))' },
-    { name: 'Brute Force', value: 15, color: 'hsl(var(--cyber-purple))' },
-    { name: 'Other', value: 5, color: 'hsl(var(--cyber-blue))' },
-  ];
+  const zeroDay = alerts.filter(a => a.attackType === 'Zero-Day');
 
   return (
     <DashboardLayout>
@@ -63,7 +153,6 @@ const Overview = () => {
             </div>
           </div>
           
-          {/* Real-time ticker */}
           <div className="flex items-center gap-6 text-sm font-mono overflow-x-auto pb-2">
             <div className="flex items-center gap-2 text-muted-foreground whitespace-nowrap">
               <Activity className="w-4 h-4 text-primary" />
@@ -90,7 +179,7 @@ const Overview = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <MetricCard
             title="Total Threats Detected"
-            value={threats.length}
+            value={threatCount}
             icon={AlertTriangle}
             variant="danger"
             trend={{ value: 12, isPositive: false }}
@@ -112,8 +201,8 @@ const Overview = () => {
             delay={0.2}
           />
           <MetricCard
-            title="Packets Analyzed"
-            value={`${(health.packetsAnalyzed / 1000000).toFixed(1)}M`}
+            title="Domains Scanned"
+            value={scanCount}
             icon={Activity}
             delay={0.3}
           />
@@ -121,7 +210,6 @@ const Overview = () => {
 
         {/* Charts Row */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Timeline Chart */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -130,7 +218,7 @@ const Overview = () => {
           >
             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
               <Clock className="w-5 h-5 text-primary" />
-              Traffic Analysis (24h)
+              Threat Activity (24h)
             </h3>
             <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -169,14 +257,6 @@ const Overview = () => {
                   />
                   <Area
                     type="monotone"
-                    dataKey="normal"
-                    stroke="hsl(var(--cyber-green))"
-                    fillOpacity={1}
-                    fill="url(#colorNormal)"
-                    strokeWidth={2}
-                  />
-                  <Area
-                    type="monotone"
                     dataKey="threats"
                     stroke="hsl(var(--cyber-red))"
                     fillOpacity={1}
@@ -188,17 +268,12 @@ const Overview = () => {
             </div>
             <div className="flex items-center justify-center gap-6 mt-4 text-sm">
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-cyber-green" />
-                <span className="text-muted-foreground">Normal Traffic</span>
-              </div>
-              <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-cyber-red" />
                 <span className="text-muted-foreground">Threats</span>
               </div>
             </div>
           </motion.div>
 
-          {/* Attack Distribution */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -240,7 +315,7 @@ const Overview = () => {
                     style={{ backgroundColor: item.color }}
                   />
                   <span className="text-muted-foreground">{item.name}</span>
-                  <span className="font-mono">{item.value}%</span>
+                  <span className="font-mono">{item.value}</span>
                 </div>
               ))}
             </div>
@@ -250,7 +325,7 @@ const Overview = () => {
         {/* Real-time Alerts Panel */}
         <RealtimeAlertPanel />
 
-        {/* Status and Alerts */}
+        {/* Status and Recent Alerts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <StatusPanel health={health} />
           
@@ -265,25 +340,16 @@ const Overview = () => {
               Recent Alerts
             </h3>
             <div className="space-y-3 max-h-[320px] overflow-y-auto scrollbar-cyber">
-              {mockAlerts.slice(0, 4).map((alert) => (
-                <AlertItem key={alert.id} alert={alert} />
-              ))}
+              {alerts.length > 0 ? (
+                alerts.slice(0, 4).map((alert) => (
+                  <AlertItem key={alert.id} alert={alert} />
+                ))
+              ) : (
+                <p className="text-center text-muted-foreground py-8">No alerts yet — run a scan to get started</p>
+              )}
             </div>
           </motion.div>
         </div>
-
-        {/* Disclaimer */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.8 }}
-          className="text-center text-sm text-muted-foreground p-4 border border-border/50 rounded-lg bg-muted/20"
-        >
-          <p>
-            <strong>Disclaimer:</strong> IntelliGuard is an educational prototype for cyber threat detection. 
-            It does not perform penetration testing or real-time intrusion prevention.
-          </p>
-        </motion.div>
       </div>
     </DashboardLayout>
   );
